@@ -274,10 +274,7 @@ Open an issue or pull request for new features, fixes, or operational issues. In
 - actual behavior
 - validation or test steps
 
-## Contact
 
-- Phone: +254 700 367 978
-- Email: info@silverandbosnia.co.ke
 
 ---
 
