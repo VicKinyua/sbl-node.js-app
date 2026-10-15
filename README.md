@@ -1,188 +1,166 @@
-# Silver & Bosnia Ltd — Fullstack Website
+# Silver & Bosnia Ltd — Fullstack Website (Technical)
 
-A complete fullstack website for **Silver & Bosnia Limited** (Nairobi), a software & IoT
-solutions company — built from the company's IoT offering analysis: 14 IoT solution areas,
-5 use-case clusters, 6 connectivity protocols, 14 industries, 8 software service lines and a
-7-stage delivery model.
-## Stack
+This repository contains a production-ready fullstack website for Silver & Bosnia Limited (Nairobi). It includes a marketing site (prebuilt SPA), a demo client portal with simulated IoT telemetry, and an admin console for message & subscriber management.
 
-| Layer     | Tech                                                        |
-|-----------|-------------------------------------------------------------|
-| Frontend  | React 18 + Vite + React Router, hand-written design system  |
-| Backend   | Node.js + Express (REST API)                                |
-| Database  | SQLite via `better-sqlite3` (WAL)                           |
-| Auth      | JWT (admin console) + bcrypt password hashing               |
-| Charts    | Custom SVG charts (no chart library)                        |
-| Images    | 9 generated photorealistic images + supplied brand logo     |
+Purpose: serve the public site and provide a lightweight demo/admin backend for enquiries and newsletter management.
 
-## Run
+Supported Node: 18+
+
+Prerequisites
+- Node.js 18+ and npm
+- Optional: cPanel with Node.js support (HostPinnacle) or any host that can run a Node.js process
+- Recommended for local dev: modern browser, SQLite tooling for inspecting the DB
+
+Quick start (local)
 
 ```bash
-npm install            # root (server) dependencies
+# install server deps
+npm install
+# install client deps
 cd client && npm install && cd ..
-npm run build          # build the frontend into client/dist
-npm start              # serve API + website on http://localhost:3000
+# build frontend
+npm run build
+# start server (serves client/dist + API) on http://localhost:3000
+npm start
 ```
 
-Dev mode (hot reload): `npm run dev:server` and `npm run dev:client` (Vite proxies `/api`).
-
-## 📧 Email via cPanel SMTP — HostPinnacle (contact form delivery)
-
-Contact-form submissions are **always saved to the database first**, then emailed:
-
-1. **Notification** → your company mailbox (`MAIL_TO`) with all form details and a
-   one-click link to the admin console
-2. **Auto-reply** → the sender, acknowledging receipt within one business day
-3. **Newsletter subscribers** → a short notification to the company mailbox
-
-Configure your HostPinnacle cPanel relay once (~2 minutes):
+Development (hot-reload)
 
 ```bash
-cp server/.env.example server/.env
+npm run dev:server    # server with reload
+npm run dev:client    # Vite dev server, proxies /api -> server
 ```
 
-In **HostPinnacle cPanel → Email → Email Accounts → "Connect Devices"** next to
-`info@silverandbosnia.co.ke`, copy the **Secure SSL/TLS** values into `server/.env`:
+Environment (.env)
+- Copy server/.env.example → server/.env and set SMTP values when required.
+- The server reads SMTP_* and MAIL_TO for mail delivery; without SMTP the app will still save enquiries and mark deliveries as skipped.
+
+Example minimal variables (server/.env):
 
 ```ini
-SMTP_HOST=mail.silverandbosnia.co.ke   # exactly as cPanel prints it (may be the server hostname)
-SMTP_PORT=465                          # 465 = SSL (recommended); 587 = STARTTLS
-SMTP_USER=info@silverandbosnia.co.ke   # full email address
-SMTP_PASS=your-cpanel-mailbox-password
-MAIL_TO=info@silverandbosnia.co.ke
+PORT=3000
+JWT_SECRET=replace-with-a-secure-secret
+SMTP_HOST=mail.example.com
+SMTP_PORT=465
+SMTP_USER=info@example.com
+SMTP_PASS=yourpassword
+MAIL_TO=info@example.com
 ```
+
+Database
+- SQLite (better-sqlite3) — database file: `server/data/silverbosnia.db` (auto-created on first run).
+- WAL mode is enabled via db.js for better concurrency.
+- Backup: copy the DB file between deployments or use regular filesystem backups.
+
+Native modules
+- `better-sqlite3` is a native module. On some shared hosts, `npm install` may need compilers available. If compilation fails in cPanel, ask HostPinnacle to enable the build toolchain or install via SSH.
+
+Security & production notes
+- Demo admin credentials are included for local/demo use only — rotate before production.
+- `.htaccess` in the public_html archive blocks private files (.env*, server/, client/, docs/, *.md) when extracted into a web root.
+- Use a strong `JWT_SECRET` and secure the server process (systemd/pm2) behind HTTPS in production.
+
+Deployment (HostPinnacle / cPanel)
+Two supported workflows are supplied as zip archives in the repo/package distribution: a public_html bundle (static files + Node app ready for cPanel) and a full code archive to keep code outside the web root.
+
+Option A — Extract into public_html (quick)
+- Upload `silver-and-bosnia-public_html.zip` to cPanel → File Manager → public_html and extract.
+- cPanel → Software → Setup Node.js App
+  - Application Root: `/home/<cpanel-user>/public_html`
+  - Startup file: `app.js`
+  - Node version: 18+
+  - Run NPM Install and Start the app
+- Create mailbox and set `server/.env` from `.env.example` with SMTP variables.
+- Restart Node app and verify `/admin` → Test SMTP.
+
+Option B — Keep code outside web root (recommended for security)
+- Upload `silver-and-bosnia-website.zip` and extract in your home directory.
+- Setup Node.js app with Application Root = extracted folder and Startup file = `server/index.js`.
+
+If cPanel lacks Setup Node.js App: SSH and run
 
 ```bash
-npm start                               # restart the server after editing .env
+npm install
+pm run build
+pm start
+# or use pm2
+pm2 start server/index.js --name silverbosnia
 ```
 
-Then open `/admin` → **“Test SMTP”** to send a verification email through
-HostPinnacle's relay. Check **cPanel → Email Deliverability** (SPF/DKIM) if test
-mail lands in spam. Until SMTP is configured the site still works — enquiries are
-stored and visible in the admin console (delivery is logged as skipped on the server).
-
-## 🚀 Deploying to HostPinnacle (cPanel)
-
-HostPinnacle plans include **Node.js support**, and the site runs in two layers:
-Apache serves the pre-built pages, and cPanel's Node.js app runs the API
-(contact forms, newsletter, admin console, portal, email).
-
-### ✅ Option A — upload straight into `public_html` (easiest)
-
-A ready-made archive exists: **`silver-and-bosnia-public_html.zip`** — its
-contents extract *directly* into `public_html`: the built site lands at the top
-level (plus a protective `.htaccess`), so there is nothing to move afterwards.
-
-1. **cPanel → Files → File Manager → `public_html` → Upload** → choose the zip →
-   **Go Back** → select the zip → **Extract → Extract File(s**).
-2. **cPanel → Software → Setup Node.js App → Create Application**
-   - Application Root: `/home/<cpanel-user>/public_html`
-   - Application Startup File: **`app.js`**
-   - Node.js version: **18 or newer** → **Create Application**
-   - Click **Run NPM Install**, then **Start** (or *Restart app*) — the server
-     already listens on `process.env.PORT`, so it is Passenger-ready.
-3. **Email:** create the mailbox `info@silverandbosnia.co.ke`
-   (**Email → Email Accounts**), then in File Manager create `server/.env` from
-   `server/.env.example` with the SMTP values (see the Email section above) and
-   restart the Node app.
-4. Open the site → `/admin` → **“Test SMTP”** to confirm end-to-end delivery.
-
-> The bundled `.htaccess` keeps `server/`, `client/`, `docs/`, `*.md`, `.env*`
-> and the SQLite database **web-inaccessible** and routes page URLs to the SPA.
-> The design renders before step 2 finishes, but the API (forms, admin, portal)
-> needs the Node.js app running. A `HOW-TO-DEPLOY.txt` checklist ships in the
-> same zip.
-
-### Option B — keep all code outside the web root
-
-Upload `silver-and-bosnia-website.zip` instead, extract it in your **home**
-directory (not `public_html`), then create the Node.js app with Application Root
-= the extracted `silverbosnia` folder and startup file `server/index.js`, and
-assign your domain to it on the same screen.
-
-### Notes
-
-- **Data:** enquiries and subscribers live in `server/data/silverbosnia.db`
-  (auto-created on first run; both zips contain the current data). Back it up
-  and carry it between deployments.
-- `better-sqlite3` is a native module — if **Run NPM Install** fails to compile,
-  ask HostPinnacle support to enable compilers for your account, then re-run it.
-- Shared-hosting alternative (if Setup Node.js App is missing): SSH →
-  `npm install` → `pm2 start server/index.js --name silverbosnia`.
-
-## 📁 Repository layout
+Repository layout
 
 ```
 silverbosnia/
-├── README.md              ← this documentation
-├── HOW-TO-DEPLOY.txt      ← 5-step deploy checklist (no credentials)
-├── app.js                 ← cPanel "Startup File" entry (Passenger → server/index.js)
-├── .htaccess              ← blocks private files + SPA routing in public_html
-├── package.json           ← server deps + scripts (install, build, start)
-├── docs/                  ← original IoT offering analysis (PDF) + logo
+├── README.md
+├── HOW-TO-DEPLOY.txt
+├── app.js                # cPanel startup shim
+├── .htaccess
+├── package.json
+├── docs/                 # analysis PDFs + assets
 ├── server/
-│   ├── index.js           ← Express app (API + static serving of client/dist)
-│   ├── content.js         ← all site content (company, solutions, industries, …)
-│   ├── db.js              ← better-sqlite3 setup (WAL, auto-creates tables)
-│   ├── mailer.js          ← SMTP notification + auto-reply emails
-│   ├── telemetry.js       ← simulated portal telemetry
-│   ├── env.js             ← .env loading
-│   ├── .env.example       ← HostPinnacle SMTP template (copy to .env)
-│   └── data/              ← SQLite database files (auto-created)
+│   ├── index.js          # Express app: API + static serving
+│   ├── content.js        # site content (company, solutions, industries...)
+│   ├── db.js             # better-sqlite3 setup (WAL)
+│   ├── mailer.js         # SMTP notification + auto-reply logic
+│   ├── telemetry.js      # simulated portal telemetry
+│   ├── env.js            # env loader
+│   ├── .env.example
+│   └── data/             # SQLite DB file(s)
 └── client/
-    ├── public/            ← images (no people), logo
-    ├── src/               ← React app (11 pages, components, design system)
-    └── dist/              ← pre-built frontend (served by Express)
+    ├── public/           # images, logo
+    ├── src/              # React app (components, pages, design system)
+    └── dist/             # built frontend
 ```
 
-The **public_html zip additionally contains the built site at its top level**
-(`index.html`, `assets/`, `img/`, `favicon.svg`, `logo.png`) so Apache can serve
-it directly after a single Extract.
+API reference (summary)
+- Public content
+  - GET /api/health
+  - GET /api/company
+  - GET /api/solutions
+  - GET /api/solutions/:slug
+  - GET /api/clusters
+  - GET /api/industries
+  - GET /api/services
+  - GET /api/process
+  - GET /api/faqs
+  - GET /api/technology
+- Forms
+  - POST /api/contact        # accepts contact form payload; validates + stores + (optionally) emails
+  - POST /api/subscribe      # newsletter subscription
+- Demo portal
+  - GET /api/demo/summary
+  - GET /api/demo/devices
+  - GET /api/demo/series
+  - GET /api/demo/alerts
+  - POST /api/demo/alerts/:id/ack
+- Admin (Bearer JWT required)
+  - POST /api/admin/login    → { token }
+  - GET /api/admin/me
+  - GET /api/admin/messages
+  - GET /api/admin/subscribers
+  - PATCH /api/admin/messages/:id
+  - DELETE /api/admin/messages/:id
 
-
-## Features
-
-**Public site**
-- Home with hero, stats, dual-practice story, solutions, clusters, platform band,
-  industries, differentiators, 7-stage process and CTA
-- 14 IoT solution areas — searchable/filterable listing + individual detail pages
-- Industries, Platform (connectivity · platform · security · hardware supply),
-  Software (8 service lines), About (vision, delivery model, commitments)
-- Contact form with server-side validation → stored in SQLite
-- Newsletter subscription
-- FAQ accordion, mobile-first responsive design, scroll-reveal animations
-
-**Client Portal demo** (`/portal`)
-- Live simulated telemetry (8 devices, 5-second tick): KPIs, device fleet, time-series
-  chart with 8h/24h ranges, fuel gauge, category donut, sparklines, alert feed with
-  acknowledgement
-
-**Admin console** (`/admin`)
-- JWT login → enquiry inbox (KPIs, filters, read/expand, status workflow, delete),
-  subscriber list, sign-out
-
-### Demo admin credentials
+Demo admin credentials (local/demo only)
 
 ```
 email:    admin@silverbosnia.co.ke
 password: SilverBosnia#2026
 ```
 
-## API overview
+Change these before any public deployment.
 
-```
-GET  /api/health | /api/company | /api/solutions | /api/solutions/:slug
-GET  /api/clusters | /api/industries | /api/services | /api/process | /api/faqs
-GET  /api/technology
-POST /api/contact | /api/subscribe
-GET  /api/demo/summary | /api/demo/devices | /api/demo/series | /api/demo/alerts
-POST /api/demo/alerts/:id/ack
-POST /api/admin/login                       → { token }
-GET  /api/admin/me | /api/admin/messages | /api/admin/subscribers   (Bearer)
-PATCH/DELETE /api/admin/messages/:id                            (Bearer)
-```
+Notes for developers
+- To inspect the DB quickly: `sqlite3 server/data/silverbosnia.db` or use a GUI client
+- The client is a Vite React app; build outputs to `client/dist` and are served by Express in production
+- Server logs are printed to stdout; in production run under pm2/systemd and capture logs securely
+- Tests: none bundled; consider adding integration tests for API endpoints and CI steps for builds
 
-## Contact (from company materials)
+Contributing
+- Open an issue or PR for feature requests or fixes. Provide a clear summary, steps to reproduce, and test instructions.
 
-Phone/WhatsApp: +254 700 367 978 · info@silverandbosnia.co.ke · Nairobi, Kenya
-Tagline: *Innovating Today. Connecting Tomorrow. Empowering Businesses.*
+Contact
+- +254 700 367 978 · info@silverandbosnia.co.ke
+
+---
+Technical README updated for developer-focused usage, deployment, and troubleshooting guidance.
