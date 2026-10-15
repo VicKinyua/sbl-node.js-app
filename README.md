@@ -4,7 +4,6 @@ A complete fullstack website for **Silver & Bosnia Limited** (Nairobi), a softwa
 solutions company — built from the company's IoT offering analysis: 14 IoT solution areas,
 5 use-case clusters, 6 connectivity protocols, 14 industries, 8 software service lines and a
 7-stage delivery model.
-
 ## Stack
 
 | Layer     | Tech                                                        |
