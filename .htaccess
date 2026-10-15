@@ -1,0 +1,17 @@
+# Silver & Bosnia — public_html hardening + SPA routing (HostPinnacle cPanel)
+# Apache serves the built pages; the Node.js app handles /api/* when running.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # 1) Never serve server code, sources, docs, env or databases over the web
+  RewriteRule ^(server|client|docs|node_modules)/ - [R=404,L]
+  RewriteRule ^(package\.json|package-lock\.json|app\.js)$ - [R=404,L]
+  RewriteRule ^\.env - [R=404,L]
+  RewriteRule \.(md|log|db|db-wal|db-shm|db-journal|sqlite|sqlite3)$ - [R=404,L]
+
+  # 2) Every other unknown path → SPA shell (React Router takes over)
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_URI} !^/api/
+  RewriteRule ^ index.html [L]
+</IfModule>
